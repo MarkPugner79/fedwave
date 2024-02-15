@@ -2603,65 +2603,67 @@ socket.on("getlivestreams",(data) => {
 // https://github.com/bitwave-tv/bitwave-media-server/blob/dev/api-server/src/classes/Relay.ts#L53
 function executeJobs() {
   // Iterate over the array of jobs and execute each job
-  thumbnailerinfo.forEach((job) => {
-    try {
-      // Execute the job
-      // job(); // this is a neat idea using () => {console.log("Job")}; in the array aka using lambda functions to be jobs to exec
-      let ffj = Ffmpeg();//.FfmpegCommand();
-      // screenshotFFmpeg.renice( 5 )
-      const thumbfn = job.thumbfilename;
-      const inputStream  = job.url;
-      ffj.input(inputStream);
+  if(thumbnailing_is_a_bad_idea_run){
+    thumbnailerinfo.forEach((job) => {
+      try {
+        // Execute the job
+        // job(); // this is a neat idea using () => {console.log("Job")}; in the array aka using lambda functions to be jobs to exec
+        let ffj = Ffmpeg();//.FfmpegCommand();
+        // screenshotFFmpeg.renice( 5 )
+        const thumbfn = job.thumbfilename;
+        const inputStream  = job.url;
+        ffj.input(inputStream);
 
-      ffj.inputOptions([
-        '-hide_banner',
-        '-err_detect ignore_err',
-        '-ignore_unknown',
-        '-stats',
-        '-fflags nobuffer+genpts+igndts',
-      ]);
+        ffj.inputOptions([
+          '-hide_banner',
+          '-err_detect ignore_err',
+          '-ignore_unknown',
+          '-stats',
+          '-fflags nobuffer+genpts+igndts',
+        ]);
 
-      ffj.output( `/tmp/${thumbfn}` );
-      ffj.outputOptions([
-          '-frames:v 1', // frames
-          '-q:v 25', // image quality
-          '-an', // no audio
-          '-y', // overwrite file
-        ]
-      );
+        ffj.output( `/tmp/${thumbfn}` );
+        ffj.outputOptions([
+            '-frames:v 1', // frames
+            '-q:v 25', // image quality
+            '-an', // no audio
+            '-y', // overwrite file
+          ]
+        );
 
-        ffj.on( 'start', commandLine => {
-          console.log(`Doing thumbnail for ${job.user}...`);
-        })
+          ffj.on( 'start', commandLine => {
+            console.log(`Doing thumbnail for ${job.user}...`);
+          })
 
-        .on( 'end', () => {
-          console.log(`Finished doing thumbnail ${job.user}...`);
-        })
-        .on( 'error', ( error, stdout, stderr ) => {
-          console.log( error );
-          console.log( stdout );
-          console.log( stderr );
+          .on( 'end', () => {
+            console.log(`Finished doing thumbnail ${job.user}...`);
+          })
+          .on( 'error', ( error, stdout, stderr ) => {
+            console.log( error );
+            console.log( stdout );
+            console.log( stderr );
 
-          if ( error.message.includes('SIGKILL') ) {
-            console.log( `${job.user}: Stream thumbnail stopped!` );
-          } else {
-            console.log(   `${job.user}: Stream thumbnail error!` ) ;
-          }
-        })
+            if ( error.message.includes('SIGKILL') ) {
+              console.log( `${job.user}: Stream thumbnail stopped!` );
+            } else {
+              console.log(   `${job.user}: Stream thumbnail error!` ) ;
+            }
+          })
 
-        .on( 'progress', progress => {
-          // progress
-        });
+          .on( 'progress', progress => {
+            // progress
+          });
 
-      ffj.run();
-      // could set a flag that it's still running and use something live the event detection to set when it has finished running and updates it
-      // https://github.com/bitwave-tv/bitwave-media-server/blob/dev/api-server/src/classes/Relay.ts#L76
-      // user:thumbstr,online:true,url:data.src,thumbfilename:thumbfn
-      // run the ffmpeg command, should probably test that it works...
-    } catch (error) {
-      console.error(`Error executing job: ${error.message}`);
-    }
-  });
+        ffj.run();
+        // could set a flag that it's still running and use something live the event detection to set when it has finished running and updates it
+        // https://github.com/bitwave-tv/bitwave-media-server/blob/dev/api-server/src/classes/Relay.ts#L76
+        // user:thumbstr,online:true,url:data.src,thumbfilename:thumbfn
+        // run the ffmpeg command, should probably test that it works...
+      } catch (error) {
+        console.error(`Error executing job: ${error.message}`);
+      }
+    });
+  }
 }
 
 // Set up the interval to execute jobs at the specified time interval
