@@ -44,6 +44,13 @@ import fetch from 'node-fetch';
 
     sadly https://github.com/livekit/livekit still seems the most gooder of them all in one stuff
     https://github.com/livekit-examples/livestream it might be easier to setup all of the livekit stuff and have it be configurable to have it run on another server
+
+    https://www.passkeys.com/guides
+    https://www.corbado.com/blog/nodejs-passkeys
+    https://docs.keeper.io/user-guides/passkeys
+    https://www.keepersecurity.com/passkeys-directory/
+    https://passkeys.directory/
+    lest we do some hacky stuff https://kick.com/api/v2/channels/thetommysotomayorshow
 */
 
 // Implements basic server stuff
@@ -89,6 +96,14 @@ const app = express();
 
         Making a similar layer for livekit would also be good for testing, you will want to run live kit on another server and probably another subdomain
         which will need a trigger layer on the server backend that authenticates and then can hit the rest api of something like livekit/livego
+
+        health status page
+
+        add a live gangstalker feature
+
+        The easy answer is to make a key per streamer to republish via browser and embed 
+
+        http://kolibrios.org/en/
 
 */
 
@@ -273,6 +288,8 @@ let hydrationEnabled = process.env.CHAT_HYDRATION || false; // you have to turn 
 
 let chatBasedViewCounter = {};//tempViews
 
+let thumbnailing_is_a_bad_idea_run = false;
+
 async function securityChecks(){
     // does startup checks for jwt and other security info that we need to run securely 
     //https://github.com/panva/jose/blob/main/docs/functions/key_generate_key_pair.generateKeyPair.md#readme
@@ -399,6 +416,8 @@ function getRandomColor() {
     res.render('watch',{session:authStatus,req:req,config:template_config});
   });
 
+  // add a health/status page, aka how much cpu/ram/free space there is
+
   app.get('/v1/thumbnail/:thumb',(req,res) => {
     const thumb = req.params.thumb;
     // get the username or stream id.jpeg that we want
@@ -495,6 +514,30 @@ function getRandomColor() {
     
   });
 
+  // add support for https://github.com/LiveStreamNorge/lsnd/blob/master/people.json
+  // as a federation endpoint standard, should be able to produce federated chat input
+  // produced a video stream that can be embedded
+
+  // https://api.bitwave.tv/v1/channels/saltycracker1
+  /* {"success":true,"message":"success","data":
+      {"_username":"saltycracker1","title":"Default Title","description":"Default Description.","timestamp":"2021-03-02T04:08:37.437Z","cover":"https://cdn.bitwave.tv/static/img/odysee-banner-live-mockup-2.jpg",
+        "poster":"https://cdn.stream.bitrave.tv/preview/saltycracker1.jpg",
+        "thumbnail":"https://cdn.stream.bitrave.tv/preview/saltycracker1.jpg",
+        "live":false,
+        "nsfw":true,
+        "archive":true,
+        "url":"https://cdn.stream.bitrave.tv/hls/saltycracker1/index.m3u8",
+        "name":"saltycracker1",
+        "owner":"tp6icUHo0nUV1DGOFGT10HNJPtB2",
+        "avatar":"https://cdn.bitwave.tv/uploads/v2/avatar/1ea634a8-76c1-4deb-92d8-03567361f3b7-128.png",
+        "to":"/saltycracker1",
+        "scheduled":"2021-03-02T01:30:00.000Z",
+        "banned":false,
+        "viewCount":1}}
+  */
+  // https://truflation.com/dashboard
+  // https://www.zerossl.org/#/
+  // https://remoteok.com/
 
   app.get('/v1/chat/channels',(req,res) => {
     
@@ -2313,9 +2356,15 @@ fwcio.sockets.on("connection", socket => {
               let thumbfn = sha1sum(thumbstr) + '.jpeg';
               thumbnailerinfo.push( {user:thumbstr,online:true,url:data.src,thumbfilename:thumbfn})
 
-              streaminfo.thumbnail = `/v1/thumbnail/${thumbfn}`;
-              if(process.env.THUMBNAILSERVER){
-                streaminfo.thumbnail = `${process.env.THUMBNAILSERVER}/v1/thumbnail/${thumbfn}`;
+              if(thumbnailing_is_a_bad_idea_run){
+                streaminfo.thumbnail = `/v1/thumbnail/${thumbfn}`;
+                if(process.env.THUMBNAILSERVER){
+                  streaminfo.thumbnail = `${process.env.THUMBNAILSERVER}/v1/thumbnail/${thumbfn}`;
+                }
+              
+
+              }else{
+                streaminfo.thumbnail = streaminfo.avatar;
               }
             }
 
