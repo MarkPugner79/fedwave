@@ -288,7 +288,7 @@ let hydrationEnabled = process.env.CHAT_HYDRATION || false; // you have to turn 
 
 let chatBasedViewCounter = {};//tempViews
 
-let thumbnailing_is_a_bad_idea_run = false;
+let thumbnailing_is_a_bad_idea_run = process.env.DO_THUMB || false; // you'll need to set this to true to use it
 
 async function securityChecks(){
     // does startup checks for jwt and other security info that we need to run securely 
