@@ -1456,9 +1456,9 @@
         });
     }
 
-    function startStream(streamurl){
+    function startStream(streaminfo){
         // should throw the stream into the options for the player
-        let options = {liveui: true,playbackRates: [ 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2 ],src:streamurl};
+        let options = {liveui: true,playbackRates: [ 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2 ],src:streaminfo.src};
         // or use "#video-container" player
         let player = videojs('player',options);
         player.play();
