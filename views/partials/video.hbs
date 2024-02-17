@@ -106,7 +106,23 @@
     <div id="video-container">
         <div id="player"></div>
         <video id="video-preview" controls ></video>
-       
+       <video
+
+        id="my-player"
+        class="video-js"
+        controls
+
+        poster="https://vjs.zencdn.net/v/oceans.png"
+        >
+        <p class="vjs-no-js" >
+            To view this video please enable JavaScript, and consider upgrading to a
+            web browser that
+            <a href="https://videojs.com/html5-video-support/" target="_blank">
+            supports HTML5 video
+            </a>
+        </p>
+        </video>
+
         <div id="video-controls">
             <button type="button" id="play-pause">Play</button>
             <!---<input type="range" id="seek-bar" value="0">-->
@@ -1460,7 +1476,7 @@
         // should throw the stream into the options for the player
         let options = {liveui: true,playbackRates: [ 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2 ],src:streaminfo.src};
         // or use "#video-container" player
-        let player = videojs('player',options);
+        let player = videojs('my-player',options);
         player.play();
 
     }
