@@ -22,6 +22,9 @@
     <script src="https://cdn.jsdelivr.net/npm/clappr@latest"></script>
      <script src="/p2p-graph.js"></script>
     <link href="/bs.css" rel="stylesheet">
+    <link href="https://vjs.zencdn.net/8.9.0/video-js.css" rel="stylesheet" />
+    <script src="https://vjs.zencdn.net/8.9.0/video.min.js"></script>
+
     <style>
       
         .labelhelper{
@@ -1453,6 +1456,15 @@
         });
     }
 
+    function startStream(streamurl){
+        // should throw the stream into the options for the player
+        let options = {liveui: true,playbackRates: [ 0.25, 0.5, 1, 1.25, 1.5, 1.75, 2 ],src:streamurl};
+        // or use "#video-container" player
+        let player = videojs('player',options);
+        player.play();
+
+    }
+
     function updateStreamList(streams){
         // clear the streamer list
         $("#livestreams").empty();
@@ -1503,6 +1515,24 @@
                 });
 
                 textnodep2p.innerHTML = '<span style=" color: white;">HLSP2P</span>';
+
+                let textnodep2pvjs = document.createElement("VJS");
+                textnodep2pvjs.addEventListener('click', function(e){
+                    // do something
+                    /*let atmessage = $("textarea#message").val()
+                        atmessage = "!w " + user + " " + atmessage;
+                        $("textarea#message").val(atmessage)
+                        $("textarea#message").focus();// send focus back to chat
+                    }*/
+                    document.getElementById("topinfovideo").hidden = true;
+                    console.log("Should attempt to connect to stream! BUT use video JS",stream.user, stream.desc);
+                    if(disable_stream_connect){
+                        //doHLSp2p(stream);
+                        startStream(stream);
+                    }
+                });
+
+                textnodep2pvjs.innerHTML = '<span style=" color: white;">VideoJS</span>';
 
 
                 let textnodeUserName = document.createElement("username"); // need to add a on click event for the attribute
