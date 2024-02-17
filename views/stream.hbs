@@ -49,6 +49,8 @@
           <button id="livekitstart" onclick="doLiveKitStartup()">Start Broadcast LiveKit</button>
           <button id="livegogetkey" onclick="getLiveGoStreamKey()">Get LiveGo Key</button>
           <button id="golivertmp" onclick="startStreamRTMPonly()">Go Live RTMP only!</button>
+          <button id="golivertmphttp" onclick="startStreamRTMPhttpannounce()">Http Announce!</button>
+          <button id="httpstop" onclick="stopStreamRtmphttp()">Http Remove</button>
           
           <p class="labelhelper">Key:</p><input type="text"  id="livegokey"  >
           <p class="labelhelper">Server:</p><input type="text"  id="livegoserver"  >
@@ -813,7 +815,119 @@
                     rtmpstream = document.getElementById('rtmp').value;
                     localStorage.setItem('rtmp',rtmpstream);
                     localStorage.setItem('broadcast-desc',broadcastDesc);
-                    socketlc.emit('announcestream',{desc:broadcastDesc,viewCountRTC:0,src:rtmpstream}); // remember this authenticates based on the token used to connect to the socketlc
+                    socketlc.emit('announcestream',{desc:broadcastDesc,viewCountRTC:0,src:rtmpstream,skipWScu:false}); // remember this authenticates based on the token used to connect to the socketlc
+                    
+                    was_live = true;
+    }
+    function startStreamRTMPhttpannounce(){
+        // do a http fetch request to try and start the stream announce 
+        // should ignore the ws disconnect if it's started via the http endpoint
+        let broadcastDesc = document.getElementById('broadcast-desc').value;
+                    // LOCALSTORAGE ADD FEATURE
+                    /*if (localStorage.getItem('broadcast-desc')) {
+                        document.getElementById('broadcast-desc').value = localStorage.getItem('broadcast-desc');
+                    }*/ 
+
+                    // set it as the next defaut stream title
+                    let rtmpstream = 'https://hls.robotstreamer.com/tv/4126.m3u8';
+                    rtmpstream = document.getElementById('rtmp').value;
+                    localStorage.setItem('rtmp',rtmpstream);
+                    localStorage.setItem('broadcast-desc',broadcastDesc);
+                    //socketlc.emit('announcestream',{desc:broadcastDesc,viewCountRTC:0,src:rtmpstream}); // remember this authenticates based on the token used to connect to the socketlc
+                    let payload = {
+                        chatToken:usertoken,
+                        desc:broadcastDesc,viewCountRTC:0,src:rtmpstream,skipWScu:true,
+                    }
+                    let options = {
+                        header:{
+                            //'Accept': "application/json",
+                            'Content-Type': 'application/json'
+                        },
+                        method:'POST',
+                        body:payload,
+                        
+                    };
+                    console.log("Should try to connect and announce the stream with:",options);
+                    try{
+                        //fetch('/v1/stream/announce',options);
+                        $.post( '/v1/stream/announce', payload, function(data, status){
+                                if(status == "success"){
+                        console.log("Live? data:",data);
+                        //window.localStorage.setItem('trollToken'  , data  );
+                        //load_chatToken();
+                        //load_trollToken();
+                        //window.location.reload();
+                        //live_go.rtmp = config.LIVEGO_SERVER_RTMP;//"rtmp";
+                        //live_go.hls = config.LIVEGO_SERVER_HLS + streamer_name + ".m3u8";//"hls";
+                        //live_go.key = "User key";
+                        //live_go.success = true;
+
+                        // set the streaming info for the livego backend
+                        //localStorage.setItem('rtmp',data.rtmp);
+                        //document.getElementById('rtmp').value = data.hls;
+
+                        // needs to set the livego stream info
+
+                        //document.getElementById('livegokey').value = data.key;
+                        //document.getElementById('livegoserver').value = data.rtmp;
+
+                        // then show all of the hidden stuff
+
+                    }
+                        });
+                    }catch(error){
+                        console.log("Failed to start stream request:",error);
+                    }
+                    was_live = true;
+
+    }
+
+    function stopStreamRtmphttp(){
+        // this is used to force remove the user from the stream list
+        let payload = {
+                        chatToken:usertoken,
+                        //desc:broadcastDesc,viewCountRTC:0,src:rtmpstream,skipWScu:true,
+                    }
+                    let options = {
+                        header:{
+                            //'Accept': "application/json",
+                            'Content-Type': 'application/json'
+                        },
+                        method:'POST',
+                        body:payload,
+                        
+                    };
+                    console.log("Should try to connect and announce the stream with:",options);
+                    try{
+                        //fetch('/v1/stream/announce',options);
+                        $.post( '/v1/stream/remove', payload, function(data, status){
+                                if(status == "success"){
+                        console.log("Live? data:",data);
+                        //window.localStorage.setItem('trollToken'  , data  );
+                        //load_chatToken();
+                        //load_trollToken();
+                        //window.location.reload();
+                        //live_go.rtmp = config.LIVEGO_SERVER_RTMP;//"rtmp";
+                        //live_go.hls = config.LIVEGO_SERVER_HLS + streamer_name + ".m3u8";//"hls";
+                        //live_go.key = "User key";
+                        //live_go.success = true;
+
+                        // set the streaming info for the livego backend
+                        //localStorage.setItem('rtmp',data.rtmp);
+                        //document.getElementById('rtmp').value = data.hls;
+
+                        // needs to set the livego stream info
+
+                        //document.getElementById('livegokey').value = data.key;
+                        //document.getElementById('livegoserver').value = data.rtmp;
+
+                        // then show all of the hidden stuff
+
+                    }
+                        });
+                    }catch(error){
+                        console.log("Failed to start stream request:",error);
+                    }
                     was_live = true;
     }
     

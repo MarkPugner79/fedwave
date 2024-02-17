@@ -51,6 +51,12 @@ import fetch from 'node-fetch';
     https://www.keepersecurity.com/passkeys-directory/
     https://passkeys.directory/
     lest we do some hacky stuff https://kick.com/api/v2/channels/thetommysotomayorshow
+    To use the kick api data you need to process the escapes which are regex escapes
+
+    So some other interesting thoughts:
+    write out the live list to disk or make some api calls to allow things to go live or end based on the m3u8 status
+    and have a hard off to drop the streamer from the list, aka a manual announce
+
 */
 
 // Implements basic server stuff
@@ -105,6 +111,8 @@ const app = express();
 
         http://kolibrios.org/en/
 
+        https://github.com/alfg/ffprobe-wasm to see if we can extract the mime type for video play back
+
 */
 
 import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
@@ -120,8 +128,29 @@ const endpoint = new WhipEndpoint({
   enabledWrtcPlugins: [ "sfu-broadcaster" ], 
 });*/
 
+/*
+// Example using fetch to load ffprobe wasm module
+fetch('path/to/ffprobe.wasm')
+  .then(response => response.arrayBuffer())
+  .then(buffer => WebAssembly.instantiate(buffer, {}))
+  .then(instance => {
+    // The ffprobe WebAssembly module is now loaded and ready to use
+    const ffprobe = instance.exports;
+    // Use ffprobe functions as needed
+  })
+  .catch(error => console.error('Error loading ffprobe:', error));
+// Example function to detect MIME type using ffprobe
+function detectMimeType(videoStream) {
+  // Call ffprobe function to analyze the video stream
+  const mimeType = ffprobe.detectMimeType(videoStream);
+  console.log('MIME type:', mimeType);
+}
 
+// Example usage
+const videoStream ='https';
+detectMimeType(videoStream);
 
+  */
 
 // use the dotenv to pass config info into our templates
 // so socket servers, signaling servers, federation options, branding can all be passed in for rendering
@@ -382,9 +411,60 @@ function getRandomColor() {
     }
     return color;
   }
+
+  // we moved this so it can be used in more places...
+  function cleanStreamerList(streamer){
+    for(let streami = 0;streami < streamList.length;streami++){
+      if(streamList[streami].user == streamer){
+        console.log("Now:",streamList.length,' streamers:',streamList, ' splicing:',streami);
+        streamList.splice(streami,1);
+        console.log("Now:",streamList.length,' streamers:',streamList);
+      }
+    }
+  }
+
+  function cleanStreamerListRemove(streamer){
+    for(let streami = 0;streami < streamList.length;streami++){
+      if(streamList[streami].user == streamer){
+        console.log("Now:",streamList.length,' streamers:',streamList, ' splicing:',streami);
+        streamList.splice(streami,1);
+        console.log("Now:",streamList.length,' streamers:',streamList);
+      }
+    }
+  }
+
+  function set_streamer_offline_force(username){
+    for(let streami = 0;streami < streamList.length;streami++){
+      if(streamList[streami].user == username){
+        //console.log("Now:",streamList.length,' streamers:',streamList, ' splicing:',streami);
+        //streamList.splice(streami,1);
+        //console.log("Now:",streamList.length,' streamers:',streamList);
+        
+          streamList[streami].live = false;
+        
+      }
+    }
+  }
   
   function getRandomUserId(){
     return Math.floor(Math.random() * 99000);
+  }
+
+  function is_user_streamer(socket,approved_streamers){
+    // after we get the streamers list and the stream user that is announcing we can try and look for them in the 
+    // authed streamers to setup and add the stream to the live list
+
+    let streamer_found = false;
+                    // loop through our streamers and add this one if not found
+    
+
+    for( const livestreamer in approved_streamers.approvedstreamers){
+      if(socket.username == approved_streamers.approvedstreamers[livestreamer].username && socket.unum == approved_streamers.approvedstreamers[livestreamer].num && socket.color == approved_streamers.approvedstreamers[livestreamer].color){
+        streamer_found = true;
+        return streamer_found;
+      }
+    }
+    return streamer_found;
   }
 
   app.get('/', (req, res) => {
@@ -1183,6 +1263,335 @@ username: user.username,
     
   });
 
+  function stream_announce(data,socket,approved_streamers){
+    // after we get the streamers list and the stream user that is announcing we can try and look for them in the 
+    // authed streamers to setup and add the stream to the live list
+    for( const livestreamer in approved_streamers.approvedstreamers){
+      if(socket.username == approved_streamers.approvedstreamers[livestreamer].username && socket.unum == approved_streamers.approvedstreamers[livestreamer].num && socket.color == approved_streamers.approvedstreamers[livestreamer].color){
+        let streaminfo = {channel:socket.username,name:socket.username,user:socket.username,desc:"A near real time live stream!",thumbnail:approved_streamers.approvedstreamers[livestreamer].avatar,avatar:approved_streamers.approvedstreamers[livestreamer].avatar,viewCountRTC:0,viewers:0,viewCount:0,live:true};
+        if(data.desc){
+          streaminfo.desc = sanitizeHtml(data.desc);
+          streaminfo.title = sanitizeHtml(data.desc);
+        }
+
+        
+
+        if(streaminfo.avatar){
+          streaminfo.cover = streaminfo.avatar;
+        }
+
+        if(data.skipWScu){
+          streaminfo.skipWScu = data.skipWScu;
+        }
+
+
+        if(data.src){
+          streaminfo.url = data.src;
+          streaminfo.src = data.src;
+          streaminfo.type = "application/x-mpegURL";
+
+          // should check and update the thumbnail if it exists... thumbnail, hash the user name for a file name to use
+          // check the global cache of thumbnails to include by value... maybe write these to ram? /tmp/user.jpeg
+          // check if the file exists...
+          // should throw this into the list of things to thumbnail, when this gets removed the thumbnailer request should go away as well
+          // should set the thumbnail url, we then need a way to spit back a valid thumbnail blob
+
+          // add a thumbnailer check, to see if it is enabled or not, if not use the avatar
+
+          let thumbstr = socket.username + "#" + socket.unum + socket.color;
+          let thumbfn = sha1sum(thumbstr) + '.jpeg';
+          thumbnailerinfo.push( {user:thumbstr,online:true,url:data.src,thumbfilename:thumbfn})
+
+          if(thumbnailing_is_a_bad_idea_run){
+            streaminfo.thumbnail = `/v1/thumbnail/${thumbfn}`;
+            if(process.env.THUMBNAILSERVER){
+              streaminfo.thumbnail = `${process.env.THUMBNAILSERVER}/v1/thumbnail/${thumbfn}`;
+            }
+          
+
+          }else{
+            streaminfo.thumbnail = streaminfo.avatar;
+          }
+        }
+
+        if(data.viewCountRTC){
+          streaminfo.viewCountRTC = data.viewCountRTC;
+        }
+  
+
+        if(data.viewers){
+          streaminfo.viewers = data.viewers;
+          streaminfo.viewCount = data.viewers;
+          streaminfo.to = socket.username;
+          streaminfo.owner = socket.username;
+        }
+
+        Object.filter = (obj, predicate) => 
+        Object.keys(obj)
+              .filter( key => predicate(obj[key]) )
+              .reduce( (res, key) => (res[key] = obj[key], res), {} );
+
+        let filtered_viewers = Object.filter(fatchatUserSet, viewer => viewer.watching.includes(socket.username));
+        if(filtered_viewers){
+
+          streaminfo.viewers = filtered_viewers;
+        }
+
+        // should enable live view counts based on people in chat
+        if(chatBasedViewCounter[socket.username]){
+          streaminfo.viewCount = chatBasedViewCounter[socket.username];
+        }
+
+        if(data.nsfw){
+          streaminfo.nsfw = data.nsfw;
+        }else{
+          streaminfo.nsfw = false;
+        }
+
+        if(data.live){
+          streaminfo.live = data.live;
+        }
+
+        if(data.banned){
+          // should check if it's true and not add the stream or remove it from the list
+
+        }
+
+        if(data.federation){
+          // should check if it's allowed to federate with the server info to connect back to for streaming
+          streaminfo.federation = data.federation; // should be the domain
+        }
+
+        //streamListSet.add(streaminfo);
+        cleanStreamerList(socket.username);
+        streamList.push(streaminfo);
+        console.log("Matched our streamer!");
+        console.log("Now:",streamList.length,' streamers:',streamList);
+        //fwcio.sockets.emit("livestreams",{streams:Array.from(streamListSet)}); // let everyone know there is a new live stream
+        fwcio.sockets.emit('live', {live:true,streamer:socket.username,server:'federationmaybe'}); // emit that stream is live
+      }
+    }
+  }
+
+  app.post('/v1/stream/announce',async (req,res) => {
+    // used announce a stream, user passes their token to this for auth
+    let error_message = '';
+    try{
+      let data = fs.readFileSync('approved_streamers.json');
+      //console.log(data.toString());
+      approved_streamers = JSON.parse(data);
+      //console.log("approved streamers json obj:",approved_streamers.approvedstreamers);
+    }catch(error){
+      console.log("Error loading approved streamers json file.");
+
+
+    }
+
+    let data = req.body;
+
+    //console.log("Data body for stream announce:",data);
+
+    // we do the same auth as whisper but validate it like the websocket announce
+    let streamer_token = req.body.chatToken;
+    let st_user = '';//userinfo.username;
+    let st_user_unum = '';//userinfo.num;
+    let st_user_color = '';//userinfo.color;
+    let parsed_user = false;
+
+    
+    let socket = {}; // setup a fake socket to do some pretend that it's a socket
+    try{
+        if(streamer_token.chatToken){
+          streamer_token = streamer_token.chatToken;
+        }
+      }catch(error){
+        console.log("Error reading and setting chat token in the chat token. This is pretty normal");
+      }
+    try{
+      const { payload, protectedHeader } = await jose.jwtVerify(streamer_token, rsaPubKey, {
+        issuer: template_config.TOKENISSUER,
+        audience: template_config.TOKENAUDIENCE
+      })
+      //console.log("stuff in the payload that has been verified:",payload);
+      const mysubinfo = payload.sub;
+      //console.log("My sub info:",mysubinfo);
+      let userinfo = mysubinfo;//JSON.parse(mysubinfo);
+      
+      st_user = userinfo.username;
+      st_user_unum = userinfo.num;
+      st_user_color = userinfo.color;
+      socket.username = st_user;
+      socket.unum = st_user_unum;
+      socket.color = st_user_color;
+      parsed_user = true;
+      console.log("Sending user validated:",st_user);
+    }catch(error){
+      error_message = "Could not parse the user token! \n";
+      console.log("Sending user could not be validated:");
+    }
+
+    // this is an effort to standardize and clean this up a bit so we can use it on websocket stream start and rtmp announce
+    // should get and build a data object for the stream announce in addition to the token
+    stream_announce(data,socket,approved_streamers);
+
+    
+
+    // after the call and should be updated/awaited
+    fwcio.sockets.emit("livestreams",{streams:streamList});
+
+    return res.send("success");
+
+  });
+
+  app.post('/v1/stream/remove',async (req,res) => {
+    // remvoes the stream from the streamer live list
+    let error_message = '';
+    try{
+      let data = fs.readFileSync('approved_streamers.json');
+      //console.log(data.toString());
+      approved_streamers = JSON.parse(data);
+      //console.log("approved streamers json obj:",approved_streamers.approvedstreamers);
+    }catch(error){
+      console.log("Error loading approved streamers json file.");
+
+
+    }
+
+    let data = req.body;
+
+    //console.log("Data body for stream announce:",data);
+
+    // we do the same auth as whisper but validate it like the websocket announce
+    let streamer_token = req.body.chatToken;
+    let st_user = '';//userinfo.username;
+    let st_user_unum = '';//userinfo.num;
+    let st_user_color = '';//userinfo.color;
+    let parsed_user = false;
+
+    
+    let socket = {}; // setup a fake socket to do some pretend that it's a socket
+    try{
+        if(streamer_token.chatToken){
+          streamer_token = streamer_token.chatToken;
+        }
+      }catch(error){
+        console.log("Error reading and setting chat token in the chat token. This is pretty normal");
+      }
+    try{
+      const { payload, protectedHeader } = await jose.jwtVerify(streamer_token, rsaPubKey, {
+        issuer: template_config.TOKENISSUER,
+        audience: template_config.TOKENAUDIENCE
+      })
+      //console.log("stuff in the payload that has been verified:",payload);
+      const mysubinfo = payload.sub;
+      //console.log("My sub info:",mysubinfo);
+      let userinfo = mysubinfo;//JSON.parse(mysubinfo);
+      
+      st_user = userinfo.username;
+      st_user_unum = userinfo.num;
+      st_user_color = userinfo.color;
+      socket.username = st_user;
+      socket.unum = st_user_unum;
+      socket.color = st_user_color;
+      parsed_user = true;
+      console.log("Sending user validated:",st_user);
+      console.log("trying to force the stream offline...",st_user);
+      // need to add a check that the user is a valid streamer before we allow them to remove the username from the list...
+      if(is_user_streamer(socket,approved_streamers)){
+        set_streamer_offline_force(st_user);
+      }else{
+        console.log("Someone is trying to kick a streamer they don't match...:", socket);
+      }
+      
+    }catch(error){
+      error_message = "Could not parse the user token! \n";
+      console.log("Sending user could not be validated:");
+    }
+
+    // this is an effort to standardize and clean this up a bit so we can use it on websocket stream start and rtmp announce
+    // should get and build a data object for the stream announce in addition to the token
+    
+    //stream_announce(data,socket,approved_streamers);
+
+    
+
+    // after the call and should be updated/awaited
+    fwcio.sockets.emit("livestreams",{streams:streamList});
+
+    return res.send("success");
+
+  });
+
+  app.post('/v1/stream/offline',async (req,res) => {
+    // used sets the stream status to offline, which leaves it in the list on the side bar
+    let error_message = '';
+    try{
+      let data = fs.readFileSync('approved_streamers.json');
+      //console.log(data.toString());
+      approved_streamers = JSON.parse(data);
+      //console.log("approved streamers json obj:",approved_streamers.approvedstreamers);
+    }catch(error){
+      console.log("Error loading approved streamers json file.");
+
+
+    }
+
+    let data = req.body;
+
+    console.log("Data body for stream announce:",data);
+
+    // we do the same auth as whisper but validate it like the websocket announce
+    let streamer_token = req.body.chatToken;
+    let st_user = '';//userinfo.username;
+    let st_user_unum = '';//userinfo.num;
+    let st_user_color = '';//userinfo.color;
+    let parsed_user = false;
+
+    
+    let socket = {}; // setup a fake socket to do some pretend that it's a socket
+    try{
+        if(streamer_token.chatToken){
+          streamer_token = streamer_token.chatToken;
+        }
+      }catch(error){
+        console.log("Error reading and setting chat token in the chat token. This is pretty normal");
+      }
+    try{
+      const { payload, protectedHeader } = await jose.jwtVerify(streamer_token, rsaPubKey, {
+        issuer: template_config.TOKENISSUER,
+        audience: template_config.TOKENAUDIENCE
+      })
+      //console.log("stuff in the payload that has been verified:",payload);
+      const mysubinfo = payload.sub;
+      //console.log("My sub info:",mysubinfo);
+      let userinfo = mysubinfo;//JSON.parse(mysubinfo);
+      
+      st_user = userinfo.username;
+      st_user_unum = userinfo.num;
+      st_user_color = userinfo.color;
+      socket.username = st_user;
+      socket.unum = st_user_unum;
+      socket.color = st_user_color;
+      parsed_user = true;
+      console.log("Sending user validated:",st_user);
+    }catch(error){
+      error_message = "Could not parse the user token! \n";
+      console.log("Sending user could not be validated:");
+    }
+
+    // this is an effort to standardize and clean this up a bit so we can use it on websocket stream start and rtmp announce
+    // should get and build a data object for the stream announce in addition to the token
+    stream_announce(data,socket,approved_streamers);
+
+    
+
+    // after the call and should be updated/awaited
+    fwcio.sockets.emit("livestreams",{streams:streamList});
+
+    return res.send("success");
+
+  });
+
   app.post('/v1/admin/stream/kick',(req,res) => {
     // should find and update the streamer info 
     // this should also look through the streamer sockets and force a disconnect
@@ -1914,28 +2323,32 @@ fwcio.sockets.on("connection", socket => {
       if(data.message.substr(0,5) == '!kick'){
         // should kick the stream of the channel it is in or take a param of the name to kick
         // https://github.com/muaz-khan/RTCMultiConnection/issues/907 
-        console.log("Should kick stream on channel:", data.channel);
-        console.log("Should also look for the stream socket to kick as well.");
-          cleanStreamerList(data.channel);
-            //streamList.push(streaminfo);
-            console.log("Matched our streamer!");
-            console.log("Now:",streamList.length,' streamers:',streamList);
-            //fwcio.sockets.emit("livestreams",{streams:Array.from(streamListSet)}); // let everyone know there is a new live stream
+        try{
+          console.log("Should kick stream on channel:", data.channel);
+          console.log("Should also look for the stream socket to kick as well.");
+            cleanStreamerList(data.channel);
+              //streamList.push(streaminfo);
+              console.log("Matched our streamer!");
+              console.log("Now:",streamList.length,' streamers:',streamList);
+              //fwcio.sockets.emit("livestreams",{streams:Array.from(streamListSet)}); // let everyone know there is a new live stream
 
-        let streamer_sockets = io_signal_server.sockets;
-        // then loop through all of them and look at the userid for the streamer to disconnect
-        // maybe do a full disconnect ?
-        streamer_sockets.forEach(vsocket => {
-            if(vsocket.userid == data.channel){
-              vsocket.disconnect();
-            }
-        });
+          let streamer_sockets = io_signal_server.sockets;
+          // then loop through all of them and look at the userid for the streamer to disconnect
+          // maybe do a full disconnect ?
+          streamer_sockets.forEach(vsocket => {
+              if(vsocket.userid == data.channel){
+                vsocket.disconnect();
+              }
             
-          
-        fwcio.sockets.emit("bulkmessage",{message:do_md("Kicked stream for: " + data.channel),username:sanitizeHtml('SERVER'),channel:sanitizeHtml(data.channel),color:sanitizeHtml(socket.color),unum:socket.unum});
+          });
+              
+            
+          fwcio.sockets.emit("bulkmessage",{message:do_md("Kicked stream for: " + data.channel),username:sanitizeHtml('SERVER'),channel:sanitizeHtml(data.channel),color:sanitizeHtml(socket.color),unum:socket.unum});
 
-        fwcio.sockets.emit("livestreams",{streams:streamList});
-
+          fwcio.sockets.emit("livestreams",{streams:streamList});
+        }catch(error){
+          console.log("Error trying to do a !kick.");
+        }
         return;
       }
 
@@ -2273,15 +2686,7 @@ fwcio.sockets.on("connection", socket => {
 
   });
 
-  function cleanStreamerList(streamer){
-    for(let streami = 0;streami < streamList.length;streami++){
-      if(streamList[streami].user == streamer){
-        console.log("Now:",streamList.length,' streamers:',streamList, ' splicing:',streami);
-        streamList.splice(streami,1);
-        console.log("Now:",streamList.length,' streamers:',streamList);
-      }
-    }
-  }
+  
 
 
 
@@ -2318,113 +2723,9 @@ fwcio.sockets.on("connection", socket => {
         console.log("Error loading approved streamers json file.");
       }
 
-    // then we should do a for loop and look for our streamer that matches
-    //for( const emote in emoteList.emotes){
-    for( const livestreamer in approved_streamers.approvedstreamers){
-        //console.log(approved_streamers.approvedstreamers[livestreamer]);
-        //{"title":"Stream Title","name":"User Display Name","avatar":"https://site.com/uploads/v2/avatar/displayimage.png","poster":"https://site.com/static/img/streamposter.png","thumbnail":"https://site.com/preview/user.jpg","to":"/user","live":true,"nsfw":false,"url":"https://site.com/hls/userrtmp/index.m3u8","owner":"ownerapikeyfirebase","banned":false}
-        if(socket.username == approved_streamers.approvedstreamers[livestreamer].username && socket.unum == approved_streamers.approvedstreamers[livestreamer].num && socket.color == approved_streamers.approvedstreamers[livestreamer].color){
-            let streaminfo = {channel:socket.username,name:socket.username,user:socket.username,desc:"A near real time live stream!",thumbnail:approved_streamers.approvedstreamers[livestreamer].avatar,avatar:approved_streamers.approvedstreamers[livestreamer].avatar,viewCountRTC:0,viewers:0,viewCount:0,live:true};
-            if(data.desc){
-              streaminfo.desc = sanitizeHtml(data.desc);
-              streaminfo.title = sanitizeHtml(data.desc);
-            }
 
-            
-
-            if(streaminfo.avatar){
-              streaminfo.cover = streaminfo.avatar;
-            }
-
-            
-
-
-            if(data.src){
-              streaminfo.url = data.src;
-              streaminfo.src = data.src;
-              streaminfo.type = "application/x-mpegURL";
-
-              // should check and update the thumbnail if it exists... thumbnail, hash the user name for a file name to use
-              // check the global cache of thumbnails to include by value... maybe write these to ram? /tmp/user.jpeg
-              // check if the file exists...
-              // should throw this into the list of things to thumbnail, when this gets removed the thumbnailer request should go away as well
-              // should set the thumbnail url, we then need a way to spit back a valid thumbnail blob
-
-              // add a thumbnailer check, to see if it is enabled or not, if not use the avatar
-
-              let thumbstr = socket.username + "#" + socket.unum + socket.color;
-              let thumbfn = sha1sum(thumbstr) + '.jpeg';
-              thumbnailerinfo.push( {user:thumbstr,online:true,url:data.src,thumbfilename:thumbfn})
-
-              if(thumbnailing_is_a_bad_idea_run){
-                streaminfo.thumbnail = `/v1/thumbnail/${thumbfn}`;
-                if(process.env.THUMBNAILSERVER){
-                  streaminfo.thumbnail = `${process.env.THUMBNAILSERVER}/v1/thumbnail/${thumbfn}`;
-                }
-              
-
-              }else{
-                streaminfo.thumbnail = streaminfo.avatar;
-              }
-            }
-
-            if(data.viewCountRTC){
-              streaminfo.viewCountRTC = data.viewCountRTC;
-            }
-      
-
-            if(data.viewers){
-              streaminfo.viewers = data.viewers;
-              streaminfo.viewCount = data.viewers;
-              streaminfo.to = socket.username;
-              streaminfo.owner = socket.username;
-            }
-
-            Object.filter = (obj, predicate) => 
-            Object.keys(obj)
-                  .filter( key => predicate(obj[key]) )
-                  .reduce( (res, key) => (res[key] = obj[key], res), {} );
-
-            let filtered_viewers = Object.filter(fatchatUserSet, viewer => viewer.watching.includes(socket.username));
-            if(filtered_viewers){
-
-              streaminfo.viewers = filtered_viewers;
-            }
-
-            // should enable live view counts based on people in chat
-            if(chatBasedViewCounter[socket.username]){
-              streaminfo.viewCount = chatBasedViewCounter[socket.username];
-            }
-
-            if(data.nsfw){
-              streaminfo.nsfw = data.nsfw;
-            }else{
-              streaminfo.nsfw = false;
-            }
-
-            if(data.live){
-              streaminfo.live = data.live;
-            }
-
-            if(data.banned){
-              // should check if it's true and not add the stream or remove it from the list
-
-            }
-
-            if(data.federation){
-              // should check if it's allowed to federate with the server info to connect back to for streaming
-              streaminfo.federation = data.federation; // should be the domain
-            }
-
-            //streamListSet.add(streaminfo);
-            cleanStreamerList(socket.username);
-            streamList.push(streaminfo);
-            console.log("Matched our streamer!");
-            console.log("Now:",streamList.length,' streamers:',streamList);
-            //fwcio.sockets.emit("livestreams",{streams:Array.from(streamListSet)}); // let everyone know there is a new live stream
-            fwcio.sockets.emit('live', {live:true,streamer:socket.username,server:'federationmaybe'}); // emit that stream is live
-          }
-    }
+      stream_announce(data,socket,approved_streamers);
+    
 
     fwcio.sockets.emit("livestreams",{streams:streamList});
 
@@ -2519,7 +2820,12 @@ socket.on("getlivestreams",(data) => {
         //console.log("Now:",streamList.length,' streamers:',streamList, ' splicing:',streami);
         //streamList.splice(streami,1);
         //console.log("Now:",streamList.length,' streamers:',streamList);
-        streamList[streami].live = false;
+        if(streamList[streami].skipWScu){
+
+        }else{
+          streamList[streami].live = false;
+        }
+        
       }
     }
   }
