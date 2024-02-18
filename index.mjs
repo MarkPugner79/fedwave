@@ -112,6 +112,7 @@ const app = express();
         http://kolibrios.org/en/
 
         https://github.com/alfg/ffprobe-wasm to see if we can extract the mime type for video play back
+        https://www.jupiterbroadcasting.com/live/
 
 */
 
@@ -1498,7 +1499,8 @@ username: user.username,
       console.log("trying to force the stream offline...",st_user);
       // need to add a check that the user is a valid streamer before we allow them to remove the username from the list...
       if(is_user_streamer(socket,approved_streamers)){
-        set_streamer_offline_force(st_user);
+        set_streamer_offline_force(st_user);// this needs to be a find and remove instead...
+        cleanStreamerListRemove(st_user);
       }else{
         console.log("Someone is trying to kick a streamer they don't match...:", socket);
       }
@@ -1538,7 +1540,7 @@ username: user.username,
 
     let data = req.body;
 
-    console.log("Data body for stream announce:",data);
+    //console.log("Data body for stream announce:",data);
 
     // we do the same auth as whisper but validate it like the websocket announce
     let streamer_token = req.body.chatToken;
@@ -1574,6 +1576,15 @@ username: user.username,
       socket.color = st_user_color;
       parsed_user = true;
       console.log("Sending user validated:",st_user);
+      console.log("trying to force the stream offline...",st_user);
+      // need to add a check that the user is a valid streamer before we allow them to remove the username from the list...
+      if(is_user_streamer(socket,approved_streamers)){
+        // should do a splice to remove the user from the streamer list
+        set_streamer_offline_force(st_user);
+      }else{
+        console.log("Someone is trying to kick a streamer they don't match...:", socket);
+      }
+      
     }catch(error){
       error_message = "Could not parse the user token! \n";
       console.log("Sending user could not be validated:");
@@ -1581,7 +1592,8 @@ username: user.username,
 
     // this is an effort to standardize and clean this up a bit so we can use it on websocket stream start and rtmp announce
     // should get and build a data object for the stream announce in addition to the token
-    stream_announce(data,socket,approved_streamers);
+    
+    //stream_announce(data,socket,approved_streamers);
 
     
 
