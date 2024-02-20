@@ -650,8 +650,8 @@ function getRandomColor() {
 
         
         result.url = liveitem.url; // this needs to probably support config options for the front end to pass the correct full url
-        result.name = liveitem.owner;
-        result.owner = liveitem.owner;
+        result.name = liveitem.name;
+        result.owner = liveitem.name;
         result.avatar = liveitem.avatar;
         result.to = liveitem.to;
         if(liveitem.scheduled){
