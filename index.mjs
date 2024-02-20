@@ -57,6 +57,18 @@ import fetch from 'node-fetch';
     write out the live list to disk or make some api calls to allow things to go live or end based on the m3u8 status
     and have a hard off to drop the streamer from the list, aka a manual announce
 
+    So compatible streaming services that can be sideloaded/sniped:
+      rs (only works on rtmp/hls streams, not websocket/webrtc streams)
+      kick https://github.com/raymon-io/streamcompanion/blob/main/src/app/kick/services/kick.service.ts#L36C1-L50C4
+      rumble
+
+    things that seem to have issues
+      yt (seems to also have some type of cors policy) https://github.com/videojs/videojs-youtube
+      odysee (seems to have cors on)
+
+    Look at another chat integration option to allow for a rust/go backend to be more memory efficient https://github.com/MemeLabs/chat/blob/master/connection.go
+
+
 */
 
 // Implements basic server stuff
@@ -595,10 +607,73 @@ function getRandomColor() {
     
   });
 
+  // consult with the stream/announce for the formatting of this and we can dd to it the info that is used on the endpoints
+  app.get('/v1/channels/:username',(req,res) => {
+    
+    const username = req.params.username;
+
+    // need to check that the value of the streamer is valid for the format expected to filter
+    //"livestreams",{streams:streamList}
+    // console.log("Is this the one that gets called for the user list?");
+      // return the live streamers list ordered maybe?
+      let liveList = streamList.filter(checkmestreamer => {
+        if(checkmestreamer.name == username){
+          //if(checkmestreamer.live){
+            return true;
+          //}
+        }
+      });
+
+      let result = {};
+
+      if(liveList.length == 1){
+        let liveitem = liveList[0];
+        const currentDate = new Date();
+        const formattedDate = currentDate.toISOString();
+        // extract the user info for the stream
+        result.title = liveitem.title;
+        result.description = liveitem.desc;
+        result.timestamp = formattedDate; // current dts as a string
+        result.cover = liveitem.cover;
+
+        result.poster = liveitem.poster;
+        
+        result.viewCount = liveitem.viewCount;
+        result.thumbnail = liveitem.thumbnail;
+        result.live = liveitem.live;
+        result.nsfw = false;
+        if(liveitem.nsfw){
+          result.nsfw = liveitem.nsfw;
+        }
+
+        result.archive = false || liveitem.archive;
+
+        
+        result.url = liveitem.url; // this needs to probably support config options for the front end to pass the correct full url
+        result.name = liveitem.owner;
+        result.owner = liveitem.owner;
+        result.avatar = liveitem.avatar;
+        result.to = liveitem.to;
+        if(liveitem.scheduled){
+          result.scheduled = liveitem.scheduled;
+        }
+        result.banned = liveitem.avatar;
+
+
+
+        res.send({success:true,message:"success",data:result});
+      }else{
+        res.send({success:false,message:"not found"});
+      }
+
+    
+    
+  });
+
   // add support for https://github.com/LiveStreamNorge/lsnd/blob/master/people.json
   // as a federation endpoint standard, should be able to produce federated chat input
   // produced a video stream that can be embedded
-
+  // https://raw.githubusercontent.com/LiveStreamNorge/lsnd/e224c78e325384ce2afcea2484e1df6b2f701fa7/scrapers/bitwave.js
   // https://api.bitwave.tv/v1/channels/saltycracker1
   /* {"success":true,"message":"success","data":
       {"_username":"saltycracker1","title":"Default Title","description":"Default Description.","timestamp":"2021-03-02T04:08:37.437Z","cover":"https://cdn.bitwave.tv/static/img/odysee-banner-live-mockup-2.jpg",
