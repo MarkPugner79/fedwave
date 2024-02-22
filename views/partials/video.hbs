@@ -19,11 +19,18 @@
 
     <script src="/p2p-media-loader-core.js"></script>
     <script src="/p2p-media-loader-hlsjs.js"></script>
+     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@clappr/core@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/clappr@latest"></script>
      <script src="/p2p-graph.js"></script>
     <link href="/bs.css" rel="stylesheet">
     <link href="https://vjs.zencdn.net/8.9.0/video-js.css" rel="stylesheet" />
     <script src="https://vjs.zencdn.net/8.9.0/video.min.js"></script>
+    <!--<script src="https://unpkg.com/videojs-flvjs/dist/videojs-flvjs.min.js"></script> -->
+    <!--<script type="text/javascript" src="https://cdn.jsdelivr.net/clappr-flvjs-plugin/0.2.2/clappr-flvjs-plugin.min.js"></script>-->
+    <!-- <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/flv.js@latest"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/clappr-flvjs-playback@latest"></script>  -->
+
+    <script src="mpegts.js"></script>
 
     <style>
       
@@ -145,6 +152,9 @@
     </style>
 
     <script>
+        // do some testing to see if we can embed flv videos and play them back, might need to look at the url and set the type info...
+       // so I did find something very :neat: about having commented out script includes inside of a script tag, the engine will try and run it...
+       // even tho it shouldn't
 
         // so the graph is the peer graph, not the usage chart
             // so from debugging it works with clappr, would be nice to get it to work with the other videojs player
@@ -303,7 +313,7 @@
                         source: selected_channel,
                         mute: true,
                         autoPlay: true,
-                        
+                        //plugins: [Clappr.FlutterFlvJsPlayback],
                         playback: {
                             hlsjsConfig: {
                                 liveSyncDurationCount: 7,
@@ -1376,6 +1386,25 @@
         // streaminfo.src = data.src;
         // streaminfo.type = "application/x-mpegURL";
         // so one of the problems is the video doesn't fill the container and sets the height to 0
+        // lets do a check of the url and use the mpegts player if it has flv in it... otherwise use the p2p player
+        // very hacky but wtf why not
+        if(streaminfo.src.endsWith(".flv")){
+            if (mpegts.getFeatureList().mseLivePlayback) {
+                // set the video to visible 
+                
+                var videoElement = document.getElementById('video-preview');
+                videoElement.style.display = "block";
+                var player = mpegts.createPlayer({
+                    type: 'flv',  // could also be mpegts, m2ts, flv
+                    isLive: true,
+                    url: streaminfo.src
+                });
+                player.attachMediaElement(videoElement);
+                player.load();
+                player.play();
+            }
+            return; // get out of here and not setup the other player
+        }
              if (p2pml.hlsjs.Engine.isSupported()) {
                     var engine = new p2pml.hlsjs.Engine();
 
@@ -1387,6 +1416,7 @@
                         autoPlay: true,
                         height: "100%",
                         width: "100%",
+                        //plugins: [Clappr.FlutterFlvJsPlayback],
                         playback: {
                             hlsjsConfig: {
                                 liveSyncDurationCount: 7,
