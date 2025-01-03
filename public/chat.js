@@ -905,6 +905,38 @@ function mktroll(){
             });
 }
 
+function upgradetoken(){
+    const endpoint = '/v1/upgradetokencheck';
+            //let payload = {user:"troll",myKey:"Troll"};
+
+            let storedchattoken = window.localStorage.getItem('chatToken');
+            let storedtrolltoken = window.localStorage.getItem('trollToken');
+            let payload = {chatToken:storedchattoken};
+                $.post( endpoint, payload, function(data, status){
+                    console.log(status);
+                    
+                    if(status == "success"){
+                        console.log("data:",data);
+                        window.localStorage.setItem('chatToken'  , data  );
+                        load_chatToken();
+                        window.location.reload();
+                    }
+                });
+                payload = {chatToken:storedtrolltoken};
+                $.post( endpoint, payload, function(data, status){
+                    console.log(status);
+                    
+                    if(status == "success"){
+                        console.log("data:",data);
+                        window.localStorage.setItem('trollToken'  , data  );
+                        load_chatToken();
+                        window.location.reload();
+                    }
+                });
+
+            
+}
+
 
 function toggleUserList(){
     // toggles the class to hide/ show the user list overlay
@@ -1746,6 +1778,10 @@ function litechat(){
         // like mkuser (no args requests one to be generated out of the dictionary of names), otherwise it will generate a token for use 
         // that has a color, name, number, secret 
         // mktroll https://passwordsgenerator.net/
+        if(msg.substr(0,8) == '/utoken'){
+            upgradetoken();
+            window.location.reload();
+        }
         if(msg.substr(0,7) == '/mkuser'){
             console.log("Should request to make a user");
             const endpoint = '/mkuser';
