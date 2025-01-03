@@ -870,12 +870,12 @@ function getRandomColor() {
         userobj.color = '#0000dd';// getRandomColor();
         userobj.num = 99999;//getRandomUserId(); // if it is valid it's a shitwave color and number specific to them
         const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
-          .setProtectedHeader({ alg: 'PS256' })
+          .setProtectedHeader({ alg: 'PS256' , typ:"JWT"})
           .setIssuedAt()
           .setIssuer('urn:example:issuer')
           .setAudience('urn:example:audience')
           //.setExpirationTime('2h')
-          .setSubject(userobj)
+          .setSubject(JSON.stringify(userobj))
           .sign(rsaPriKey)
     
         //console.log(jwt)
@@ -913,12 +913,12 @@ function getRandomColor() {
         userobj.color = getRandomColor();
         userobj.num = getRandomUserId();
         const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
-          .setProtectedHeader({ alg: 'PS256' })
+          .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
           .setIssuedAt()
           .setIssuer('urn:example:issuer')
           .setAudience('urn:example:audience')
           //.setExpirationTime('2h')
-          .setSubject(userobj)
+          .setSubject(JSON.stringify(userobj))
           .sign(rsaPriKey)
     
         //console.log(jwt)
@@ -1089,7 +1089,7 @@ username: user.username,
         page: user.page     || null,
       .page = { watch: channel };
         */
- 
+  // should make a streamer list of who is a approved so it can be searched
 
 
   //let streamername = req.params.id;
@@ -1899,6 +1899,36 @@ function genTrollId(){
     return color;
   
   }
+
+  app.post('/upgradetokencheck',async (req, res) => {
+
+    let from_token = req.body.chatToken;
+    let upgraded_token = '';
+    try{
+      const { payload, protectedHeader } = await jose.jwtVerify(from_token, rsaPubKey, {
+        issuer: template_config.TOKENISSUER,
+        audience: template_config.TOKENAUDIENCE
+      })
+
+      let userobj = payload.sub;
+      // if it validates we should then do an upgrade and resign of all of this crap
+      const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
+        .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
+        .setIssuedAt()
+        .setIssuer('urn:example:issuer')
+        .setAudience('urn:example:audience')
+        //.setExpirationTime('2h')
+        .setSubject(JSON.stringify(userobj))
+        .sign(rsaPriKey)
+        upgraded_token = jwt;
+
+    }catch(error){
+      console.log("Error doing legacy token check");
+    }
+
+    res.send(upgraded_token);
+  
+  });
     
   
     // look at adding a rate limiter
@@ -1922,15 +1952,17 @@ function genTrollId(){
       const trollid = genTrollId(); // should be 4 characters long, nums, upper, lower
       userobj.username = "troll:" + trollid;
       const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
-        .setProtectedHeader({ alg: 'PS256' })
+        .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
         .setIssuedAt()
         .setIssuer('urn:example:issuer')
         .setAudience('urn:example:audience')
         //.setExpirationTime('2h')
-        .setSubject(userobj)
+        .setSubject(JSON.stringify(userobj))
         .sign(rsaPriKey)
   
       //console.log(jwt)
+
+      // the JWT needs to have the subject tostringed before it's signed, then all of the clients need to be updated
   
       //const randomState = rand(160,36);
       res.send(jwt);
@@ -1971,12 +2003,12 @@ function genTrollId(){
         userobj.color = getRandomColor();
         userobj.num = getRandomUserId();
         const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
-          .setProtectedHeader({ alg: 'PS256' })
+          .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
           .setIssuedAt()
           .setIssuer('urn:example:issuer')
           .setAudience('urn:example:audience')
           //.setExpirationTime('2h')
-          .setSubject(userobj)
+          .setSubject(JSON.stringify(userobj))
           .sign(rsaPriKey)
     
         //console.log(jwt)
@@ -1999,12 +2031,12 @@ function genTrollId(){
     const trollid = genTrollId(); // should be 4 characters long, nums, upper, lower
     userobj.username = "troll:" + trollid;
     const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
-      .setProtectedHeader({ alg: 'PS256' })
+      .setProtectedHeader({ alg: 'PS256' , typ:"JWT"})
       .setIssuedAt()
       .setIssuer('urn:example:issuer')
       .setAudience('urn:example:audience')
       //.setExpirationTime('2h')
-      .setSubject(userobj)
+      .setSubject(JSON.stringify(userobj))
       .sign(rsaPriKey)
 
     //console.log(jwt)

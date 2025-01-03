@@ -554,8 +554,14 @@ function load_chatToken(){
             //const temptoken = JSON.parse(usertoken);
             //console.log("My token loade:",temptoken);
 
-            const usernametemp = parseToken(usertoken).sub.username;
-            username_global = usernametemp;
+            const usernametempstr = parseToken(usertoken).sub;//.username;
+            //console.log("The string of the sub:",usernametempstr);
+            const usernametemp = JSON.parse(usernametempstr).username;
+            //console.log("The string of the sub:",usernametemp);
+            //console.log(usernametemp.username);
+            username_global = usernametemp;//usernametemp.username;
+
+            //username_global = usernametemp;
             $("#userid").val(usernametemp);
             return;
         }else{
@@ -578,8 +584,14 @@ function load_trollToken(){
             //const temptoken = JSON.parse(usertoken);
             //console.log("My token loade:",temptoken);
 
-            const usernametemp = parseToken(usertoken).sub.username;
-            username_global = usernametemp;
+            const usernametempstr = parseToken(usertoken).sub;//.username;
+            //console.log("The string of the sub:",usernametempstr);
+            const usernametemp = JSON.parse(usernametempstr).username;
+            //console.log("The string of the sub:",usernametemp);
+            //console.log(usernametemp.username);
+            username_global = usernametemp;//usernametemp.username;
+
+            //username_global = usernametemp;
             $("#userid").val(usernametemp);
             return;
         }else{
