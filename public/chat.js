@@ -1778,7 +1778,7 @@ function litechat(){
         // like mkuser (no args requests one to be generated out of the dictionary of names), otherwise it will generate a token for use 
         // that has a color, name, number, secret 
         // mktroll https://passwordsgenerator.net/
-        if(msg.substr(0,8) == '/utoken'){
+        if(msg.substr(0,7) == '/utoken'){
             upgradetoken();
             window.location.reload();
         }
