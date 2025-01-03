@@ -1900,10 +1900,10 @@ function genTrollId(){
   
   }
 
-  app.post('/upgradetokencheck',async (req, res) => {
+  app.post('/v1/upgradetokencheck',async (req, res) => {
 
     let from_token = req.body.chatToken;
-    let upgraded_token = '';
+    let upgraded_token = from_token;// default it will return your token
     try{
       const { payload, protectedHeader } = await jose.jwtVerify(from_token, rsaPubKey, {
         issuer: template_config.TOKENISSUER,
