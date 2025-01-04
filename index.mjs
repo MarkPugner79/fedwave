@@ -1908,6 +1908,8 @@ function genTrollId(){
 
     let from_token = req.body.chatToken;
     let upgraded_token = from_token;// default it will return your token
+
+    let parsed_classictoken = false;
     try{
       const { payload, protectedHeader } = await jose.jwtVerify(from_token, rsaPubKey, {
         issuer: template_config.TOKENISSUER,
@@ -1919,16 +1921,45 @@ function genTrollId(){
       const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
         .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
         .setIssuedAt()
-        .setNotBefore()
+        .setNotBefore("-2d")
         .setIssuer('urn:example:issuer')
         .setAudience('urn:example:audience')
         .setExpirationTime('10y')
         .setSubject(JSON.stringify(userobj))
         .sign(rsaPriKey)
         upgraded_token = jwt;
+        parsed_classictoken = true;
 
     }catch(error){
       console.log("Error doing legacy token check");
+      parsed_classictoken = false;
+    }
+
+    try{
+      if(parsed_classictoken){
+        // nothing to do since we already did a token upgrade
+      }else{
+        const { payload, protectedHeader } = await jose.jwtVerify(from_token, rsaPubKey, {
+          issuer: template_config.TOKENISSUER,
+          audience: template_config.TOKENAUDIENCE
+        })
+  
+        let userobj = payload.sub; // if this is a string we should be good and it should parse
+        // try and upgrade to add not before and expire to get it to validate
+        const jwt = await new jose.SignJWT({ 'urn:example:claim': true })
+        .setProtectedHeader({ alg: 'PS256', typ:"JWT" })
+        .setIssuedAt()
+        .setNotBefore("-2d")
+        .setIssuer('urn:example:issuer')
+        .setAudience('urn:example:audience')
+        .setExpirationTime('10y')
+        .setSubject(userobj)
+        .sign(rsaPriKey)
+        upgraded_token = jwt;
+      }
+      // check if we did a good conversion of it or not, to select the format
+    }catch(error){
+      console.log("Error doing modern token check/upgrade");
     }
 
     res.send(upgraded_token);
