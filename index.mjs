@@ -126,6 +126,11 @@ const app = express();
         https://github.com/alfg/ffprobe-wasm to see if we can extract the mime type for video play back
         https://www.jupiterbroadcasting.com/live/
 
+        Need to then go through and save the live stream data structure out to a file which will probably be in temp, so if the service restarts, it's still in memory at least
+
+        2025-03-01
+          let us make stream stuff persistent and restore state if the server (service) restarts....
+
 */
 
 import * as dotenv from 'dotenv' // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
@@ -423,6 +428,29 @@ function getRandomColor() {
       color += letters[Math.floor(Math.random() * 16)];
     }
     return color;
+  }
+
+  function saveStreamerList(){
+    // dumps the streamer list object into a json file
+    try {
+      fs.writeFileSync('livestreams.json', JSON.stringify(streamList,null,4))
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  function startupLoadStreamerListCheck(){
+    // checks for the last streamer list and reloads it...
+    try{
+      let data = fs.readFileSync('livestreams.json');
+      //console.log(data.toString());
+      streamList = JSON.parse(data);
+    }catch(error){
+      console.log("Error loading livestreams json file.");
+      //emoteList = [];
+      streamList = [];
+      //emoteList.emotes = [];
+    }
   }
 
   // we moved this so it can be used in more places...
@@ -1513,7 +1541,7 @@ username: user.username,
     // this is an effort to standardize and clean this up a bit so we can use it on websocket stream start and rtmp announce
     // should get and build a data object for the stream announce in addition to the token
     stream_announce(data,socket,approved_streamers);
-
+    saveStreamerList();
     
 
     // after the call and should be updated/awaited
@@ -1598,7 +1626,7 @@ username: user.username,
 
     // after the call and should be updated/awaited
     fwcio.sockets.emit("livestreams",{streams:streamList});
-
+    saveStreamerList();
     return res.send("success");
 
   });
@@ -1678,6 +1706,8 @@ username: user.username,
 
     // after the call and should be updated/awaited
     fwcio.sockets.emit("livestreams",{streams:streamList});
+
+    saveStreamerList();
 
     return res.send("success");
 
@@ -2188,6 +2218,9 @@ import { match } from 'assert';
       }
       
       getEmotes();
+
+
+      startupLoadStreamerListCheck();
 
       const renderer = new marked.Renderer();
 
@@ -2885,6 +2918,8 @@ fwcio.sockets.on("connection", socket => {
 
 
       stream_announce(data,socket,approved_streamers);
+
+      saveStreamerList();
     
 
     fwcio.sockets.emit("livestreams",{streams:streamList});
