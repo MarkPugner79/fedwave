@@ -748,7 +748,7 @@ function getRandomColor() {
           //console.log("stuff in the payload that has been verified:",payload);
           const mysubinfo = payload.sub;
           //console.log("My sub info:",mysubinfo);
-          let userinfo = mysubinfo;//JSON.parse(mysubinfo);
+          let userinfo = JSON.parse(mysubinfo);//mysubinfo;//
           console.log("Authed:",userinfo);
           //socket.username = userinfo.username;
           //socket.unum = userinfo.num;
