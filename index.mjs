@@ -1523,7 +1523,7 @@ username: user.username,
       //console.log("stuff in the payload that has been verified:",payload);
       const mysubinfo = payload.sub;
       //console.log("My sub info:",mysubinfo);
-      let userinfo = mysubinfo;//JSON.parse(mysubinfo);
+      let userinfo = JSON.parse(mysubinfo);//mysubinfo;//
       
       st_user = userinfo.username;
       st_user_unum = userinfo.num;
